@@ -1,0 +1,210 @@
+create table if not exists Styles(
+	Styles_ID serial primary key,
+	Name varchar(60) not NULL	
+);
+
+create table if not exists Performers(
+	Performers_ID serial primary key,
+	Name varchar(60) not NULL	
+);
+
+create table if not exists StylePerformers(
+	Styles_ID INTEGER references Styles(Styles_ID),
+	Performers_ID INTEGER references Performers(Performers_ID),
+	CONSTRAINT pk primary key (Styles_ID, Performers_ID)
+);
+
+create table if not exists Albums(
+	Albums_ID SERIAL primary key,
+	Name VARCHAR(80) not null,
+	YearCreate INTEGER not null 
+);
+
+
+create table if not exists PerformerAlbums(
+	Albums_ID INTEGER references Albums(Albums_ID),  
+	Performers_ID INTEGER references Performers(Performers_ID),
+	CONSTRAINT pr primary key (Albums_ID, Performers_ID)
+);
+
+create table if not exists Collections(
+	Collections_ID SERIAL primary key ,
+	Name varchar(60) not null,
+	YearCreate INTEGER not null
+); 
+
+create table if not exists Tracks(
+	Tracks_ID SERIAL primary key,
+	Name varchar(80) not null,
+	Time TIME not null,
+	Albums_ID INTEGER references Albums(Albums_ID)
+);
+
+create table if not exists AlbumTracks(
+	Collections_ID INTEGER references Collections(Collections_ID),
+	Tracks_ID INTEGER references Tracks(Tracks_ID), 
+	CONSTRAINT fr primary key (Collections_ID, Tracks_ID)  
+);
+
+-- Заполнение таблиц  	 
+
+insert into	styles (name)
+values ('HardRock'),
+	   ('Rock'),
+	   ('Jazz');
+		
+insert into	performers (name)
+values ('Led Zeppelin'),
+	   ('ACDC'),
+	   ('Nina Simone'),
+	   ('U2'),
+	   ('Nickelback');
+	
+insert into	albums (name, yearcreate)
+values ('Back in Black', 1980),
+	   ('Coda', 1982),
+	   ('Dark Horse', 2008),
+	   ('Zooropa', 1993),
+	   ('Power Up', 2020),
+	   ('Feed the Machine', 2019),
+	   ('Get Rollin',2020);
+	
+
+insert into	performeralbums(albums_ID, performers_id)
+values (1, 2),
+	   (2, 1),
+	   (3, 5),
+	   (4, 4),
+	   (5, 2),
+	   (6, 5),
+	   (7, 5);
+
+insert into	tracks (name, time, albums_id)
+values ('We re Gonna Groov', '00:02:37', 2),
+	   ('Let Me Put My Love into You', '00:04:12', 1),
+	   ('Lemon', '00:06:58', 4),
+	   ('After the Rain', '00:03:35', 6),
+	   ('This Afternoon', '00:04:35', 3),
+	   ('Money Shot', '00:03:05', 5),
+	   ('Hells Bells', '00:05:12', 1),
+	   ('Immigrant Song', '00:02:25', 2),
+	   ('My own', '00:02:37', 1),
+	   ('Own my', '00:04:12', 3),
+	   ('my', '00:01:54', 2),
+	   ('oh my got', '00:05:11', 5),
+	   ('myself', '00:06:42', 4),
+	   ('by myself', '00:03:42', 7),
+	   ('bemy self', '00:04:58', 4),
+	   ('myself by', '00:03:45', 6),
+	   ('by myself by', '00:02:26', 5),
+	   ('beemy', '00:03:02', 2),
+	   ('premyne', '00:02:42', 3);
+	
+insert into styleperformers(styles_id  ,performers_id)
+values (1, 1),
+	   (1, 2),
+	   (2, 4),
+	   (2, 5),
+	   (3, 3);
+	   
+
+insert into	collections(name, yearcreate)
+values ('Romantic', 2018),
+	   ('Ballades', 2001),
+	   ('Classic Rock', 2008),
+	   ('Super Hits', 2019);
+
+insert into albumtracks (collections_id , tracks_id)
+values (3, 1),
+	   (3, 2),
+	   (3, 6),
+	   (1, 3),
+	   (1, 4),
+	   (1, 2),
+	   (2, 5),
+	   (2, 3),
+	   (2, 1),
+	   (4, 4),
+	   (4, 2),
+	   (4, 6);
+	  
+-- ЗАПРОСЫ----------------------------------------------------------------------------------------------
+
+-- Название и продолжительность самого длительного трека
+select name, time
+  from tracks
+ where time = (select max(time) from tracks); 
+
+-- Название треков, продолжительность которых не менее 3,5 минут. 
+select name, time
+  from tracks t 
+ where time  >= '00:03:30'; 
+  
+-- Названия сборников, вышедших в период с 2018 по 2020 год включительно 
+select name
+  from collections 
+ where yearcreate between 2018 and 2020; 
+
+ -- Исполнители, чьё имя состоит из одного слова
+ select name
+   from performers as p 
+  where name not LIKE '% %';
+  
+ -- Название треков, которые содержат слово «мой» или «my» 
+ select name 
+   from tracks as t 
+  where name ilike 'my%' and position (' ' in name) = 3 
+ 	 or name ilike '%my' and position (' ' in name) = char_length(name) - 2
+ 	 or name ilike '%my%' and substring(name from position(' ' in name) + 3 for 1) = ' '
+       or name ilike 'my';
+ 
+-- Количество исполнителей в каждом жанре
+    select name, count(*)  
+      from styles as s 
+ left join styleperformers as s2 
+        on s.styles_id = s2.styles_id 
+  group by name;
+ 
+ -- Количество треков, вошедших в альбомы 2019–2020 годов
+   select count(*)  
+      from albums as a 
+ left join tracks as t 
+        on a.albums_id = t.albums_id 
+     where a.yearcreate between 2019 and 2020;
+  	 
+ -- Средняя продолжительность треков по каждому альбому
+    select a.name, avg(t.time) 
+      from albums as a 
+ left join tracks as t 
+        on a.albums_id = t.albums_id  
+  group by a.name;   
+  
+ 
+ -- Все исполнители, которые не выпустили альбомы в 2020 году
+ select name
+   from performers 
+ except 
+ select p2.name
+   from albums as a 
+   join performeralbums as p
+     on a.albums_id = p.albums_id  
+   join performers as p2 
+     on p.performers_id  = p2.performers_id 
+  where a.yearcreate = '2020';
+      
+-- Названия сборников, в которых присутствует исполнитель "ACDC"
+   select c.name
+     from collections as c 
+left join albumtracks as a
+       on c.collections_id = a.collections_id 
+left join tracks t 
+       on a.tracks_id = t.tracks_id 
+left join albums a2 
+       on t.albums_id = a2.albums_id 
+left join performeralbums p 
+       on a2.albums_id = p.albums_id 
+left join performers p2 
+       on p.performers_id = p2.performers_id 
+    where p2."name"  = 'ACDC'
+ group by c.name;
+  	  
